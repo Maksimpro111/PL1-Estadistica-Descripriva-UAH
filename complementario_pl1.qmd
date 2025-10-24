@@ -1,0 +1,70 @@
+---
+title: "Complementario PL1 – Crecimiento PIB por grupos (1998–2019)"
+author: "Alumno"
+format:
+  html:
+    toc: false
+    number-sections: false
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+# Setup (usar dependencias mínimas)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(readr)
+  library(ggplot2)
+})
+source("R/helpers.R")
+
+dir.create("figs", showWarnings = FALSE)
+
+# Utilidad para leer GDP.csv desde data/ o raíz
+read_gdp_csv <- function() {
+  path1 <- file.path("data", "GDP.csv")
+  path2 <- "GDP.csv"
+  path <- if (file.exists(path1)) path1 else path2
+  readr::read_csv(path, show_col_types = FALSE)
+}
+
+# Cargar y preparar PIB
+gdp_raw <- read_gdp_csv()
+stopifnot(all(c("geo","TIME_PERIOD","OBS_VALUE") %in% names(gdp_raw)))
+
+gdp <- gdp_raw %>%
+  transmute(
+    geo = geo,
+    year = as.integer(TIME_PERIOD),
+    gdp_pc = suppressWarnings(as.numeric(OBS_VALUE))
+  ) %>%
+  filter(year >= 1998, year <= 2019,
+         geo %in% c(western_countries, eastern_countries)) %>%
+  mutate(group = assign_group(geo)) %>%
+  arrange(geo, year)
+
+# Calcular crecimiento interanual por país
+gdp_growth <- calc_growth_metrics(gdp, by_cols = c("geo"), value_col = gdp_pc)
+
+# Agregar crecimiento medio por grupo y año
+growth_group_year <- gdp_growth %>%
+  group_by(group, year) %>%
+  summarize(yoy_growth_mean = mean(yoy_growth, na.rm = TRUE), .groups = "drop")
+
+# Gráfico comparativo
+plt <- growth_group_year %>%
+  ggplot(aes(x = year, y = yoy_growth_mean, color = group)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey60") +
+  geom_line(size = 1) +
+  scale_x_continuous(breaks = seq(1998, 2019, by = 3)) +
+  labs(title = "Crecimiento interanual del PIB per cápita (media por grupo)",
+       subtitle = "Occidente vs Este, 1998–2019",
+       x = "Año",
+       y = "% crecimiento interanual") +
+  theme_minimal()
+
+plt
+
+ggsave(file.path("figs","crecimiento_pib_grupos_1998_2019.png"), plt, width = 9, height = 5, dpi = 150)
