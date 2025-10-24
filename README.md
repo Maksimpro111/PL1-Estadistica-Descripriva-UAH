@@ -1,4 +1,4 @@
-# PL1-Estadistica-Descripriva-UAH
+# PL1-Estadistica-Descriptiva-UAH
 Carlos Pérez y Maksim Romanyuk
 # 📊 Proyecto PL1 – Estadística Descriptiva (GISI 1B - 2025/26)
 
